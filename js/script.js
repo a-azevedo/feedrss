@@ -1,34 +1,57 @@
-const main = document.querySelector("main");
+
 let currentPage = 1;
+let loading = false;
 
-function createCard(article){
-    const articleElement = document.createElement('article');
-    const titleElement = document.createElement('strong');
-    const descriptionElement = document.createElement('p');
-    const imageElement = document.createElement('img');
+async function getPosts() {
+    if (loading) return; // Prevent multiple requests
+    loading = true; // Set loading to true
 
-    titleElement.textContent = article.title;
-    descriptionElement.textContent = article.description;
-    imageElement.src = article.cover_image;
+    const URL = `https://dev.to/api/articles?per_page=10&page=${currentPage}`;
+    try {
+        const response = await fetch(URL);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json();
 
-    articleElement.appendChild(imageElement);
-    articleElement.appendChild(titleElement);
-    articleElement.appendChild(descriptionElement);
+        data.forEach((element, index) => {
+            const article = document.createElement('article');
+            const title = document.createElement('h2');
+            const image = document.createElement('img');
 
-    return articleElement;
+            title.textContent = element.title;
+            image.src = element.cover_image || element.social_image;
+
+            article.appendChild(title);
+            article.appendChild(image);
+            document.body.appendChild(article);
+            article.classList.add('card');
+            image.classList.add('img');
+
+            if (index === data.length - 1) {
+                const lastPost = article;
+                observer.observe(lastPost); // Observe the last post
+            }
+        });
+
+        currentPage++; // Increment currentPage for next request
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+    } finally {
+        loading = false; // Reset loading state
+    }
 }
 
-function listArticlesInCards(articles){
-    return articles.map(article => {createCard(article)});
-}
-async function getPosts(){
-    const response = await fetch(`https://dev.to/api/articles?per_page=10&page=${currentPage}`);
-    const data = await response.json();
-    const listOfCards = listArticlesInCards(data);
-    listOfCards.forEach(card => {
-        main.appendChild(listOfCards(card));
-    })
-}
+const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+        getPosts();
+    }
+}, {
+    rootMargin: '100px', // Adjust this value to control when the observer is triggered
+});
 
 getPosts();
+
+
+
+
+
 
